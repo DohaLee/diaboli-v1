@@ -1,8 +1,12 @@
-@import "reset.css";
 @import "variables.css";
 :root {
   /* Colors */
   --bg-color: var(--system-color);
+}
+
+* {
+  margin: 0;
+  padding: 0;
 }
 
 body {
@@ -11,5 +15,9 @@ body {
   display: flex;
   justify-content: center;
   align-items: center;
+}
+
+body,
+canvas {
   background-color: var(--bg-color);
 }
