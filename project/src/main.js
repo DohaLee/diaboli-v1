@@ -1,44 +1,133 @@
 "use strict";
 
-class World {
-  constructor(context = "2d", canvasSelector = "canvas") {
-    this._canvas = document.querySelector(canvasSelector);
+function checkNumber(n, min, max) {
+  return n < min || n > max ? false : true;
+}
+
+// --------------------
+class SystemObject {
+  constructor(parentSelector) {
+    this._parentSelector = parentSelector;
+    this._parent = document.querySelector(parentSelector);
+    if (!this._parent) this._parent = document.body;
+  }
+  get parentSelector() {
+    return this._parentSelector;
+  }
+  get parent() {
+    return this._parent;
+  }
+}
+
+class Layer extends SystemObject {
+  constructor(parentSelector = null, context = "2d") {
+    super(parentSelector);
+    this._canvas = document.createElement("canvas");
     this._ctx = this._canvas.getContext(context);
-    this._canvas && this._ctx //
-      ? (this._work = true)
-      : (this._work = false);
-    this.init();
+    this.append(this._parent);
+    this.fitInParent();
   }
-  init() {
-    this.resize();
-    this.addEventListeners();
+  append(parentElement) {
+    if (!parentElement instanceof HTMLElement)
+      throw new Error("Not a HTMLElement.");
+    parentElement.appendChild(this._canvas);
+    this._parent = parentElement;
   }
-  resize() {
-    this._canvas.width = window.innerWidth;
-    this._canvas.height = window.innerHeight;
+  fitInParent() {
+    if (!this._parent) return;
+    const parentStyle = this._parent.style;
+    if (parentStyle.position !== "relative") {
+      parentStyle.position = "relative";
+    }
+    const canvasStyle = this._canvas.style;
+    canvasStyle.position = "absolute";
+    canvasStyle.top = 0;
+    canvasStyle.left = 0;
+    this._canvas.width = this._parent.clientWidth;
+    this._canvas.height = this._parent.clientHeight;
   }
-  addEventListeners() {
-    window.addEventListener("resize", () => this.resize());
+  justResize() {
+    this._canvas.width = this._parent.clientWidth;
+    this._canvas.height = this._parent.clientHeight;
   }
-  update() {
+  draw() {
     this._ctx.beginPath();
     this._ctx.moveTo(20, 20);
     this._ctx.lineTo(130, 130);
     this._ctx.stroke();
     this._ctx.closePath();
   }
-  get work() {
-    return this._work;
+  get context() {
+    return this._ctx;
   }
   get canvas() {
     return this._canvas;
   }
-  get ctx() {
-    return this._ctx;
+}
+
+class LayerList extends SystemObject {
+  MAX_LAYER_NUMBER = 99;
+  constructor(n = 0, parentSelector = null, context = "2d") {
+    super(parentSelector);
+    this._list = [];
+    this.createLayers(n);
+  }
+  createLayers(n) {
+    if (checkNumber(n, 1, this.MAX_LAYER_NUMBER) === false)
+      throw new Error("Out of Number");
+    //-------
+    for (let count = 0; count < n; count++)
+      this._list.push(new Layer(this._parentSelector));
+    //-------
+  }
+  resize() {
+    this._list.forEach((layer) => layer.justResize());
+  }
+  fitInParent() {
+    this._list.forEach((layer) => layer.fitInParent());
+  }
+  render() {
+    this._list.forEach((layer) => layer.draw());
+  }
+  get list() {
+    return this._list;
   }
 }
 
-let stage = new World();
+class World extends SystemObject {
+  // *** canvasSelector must be 'Canvas Object' in HTML. ***
+  constructor(parentSelector, nLayers = 1, context = "2d") {
+    super(parentSelector);
+    this._layers = new LayerList(nLayers, parentSelector, context);
+    this._isWorking = false;
+    this.init();
+  }
+  init() {
+    this.addEventListeners();
+    this._isWorking = true;
+  }
+  addEventListeners() {
+    window.addEventListener("resize", () => this._layers.resize());
+  }
+  update() {
+    if (this._isWorking === false) return;
+    this._layers.render();
+  }
+  set parent(parentElement) {
+    if (!parentElement instanceof HTMLElement)
+      throw new Error("Not a HTMLElement");
+    this._parent = parentElement;
+    this._layers.fitInParent();
+  }
+  get isWorking() {
+    return this._isWorking;
+  }
+  get layers() {
+    return this._layers;
+  }
+}
+
+let stage = new World(".stage");
 
 function animate() {
   stage.update();
