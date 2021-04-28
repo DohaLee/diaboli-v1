@@ -1,18 +1,22 @@
+"use strict";
+
 let _canvas = null;
 let _contextType = null;
 let _ctx = null;
 let _id = null;
 
+let _img = null;
+
 onmessage = function (evt) {
   const { key, data } = evt.data;
   switch (key) {
     case "init":
-      [_canvas, _contextType] = data;
+      [_canvas, _contextType, img] = data;
       _ctx = _canvas.getContext(_contextType);
+      _img = img;
       break;
     case "draw":
-      const [x, u] = data;
-      draw(x, u);
+      draw(data); // [img, x, y, w, h]
       break;
     case "resize":
       const [width, height] = data;
@@ -27,14 +31,14 @@ onmessage = function (evt) {
 
 // -----------------
 
-function draw(x, u) {
+function draw(data) {
+  const [imgNumber, x, y, w, h] = data;
+  console.log("Asd");
   function render() {
-    _ctx.beginPath();
-    _ctx.moveTo(20, 20);
-    _ctx.lineTo(x, u);
-    _ctx.stroke();
-    _ctx.closePath();
-    _id = requestAnimationFrame(render);
+    if (img.list[0]) {
+      _ctx.drawImage(_img[0], x, y, w, h);
+      _id = requestAnimationFrame(render);
+    }
   }
   render();
 }

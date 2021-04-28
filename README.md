@@ -1,2 +1,9 @@
-# diaboli-v1
-Tamagotchi NFT Project based on Javascript.
+# _diaboli-v1_
+
+_Tamagotchi NFT Project based on Javascript._
+
+#
+
+```ts
+
+```

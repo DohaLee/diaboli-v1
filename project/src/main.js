@@ -6,8 +6,39 @@ const OFFSCREEN_PATH = "src/offscreen.js";
 
 // --------------------
 
-function checkNumber(n, min, max) {
+function checkMinMax(n, min, max) {
   return n < min || n > max ? false : true;
+}
+
+class ENUM {
+  constructor(keyArray) {
+    this._keys = [];
+    this.keys = keyArray;
+    this._locked = true; // Default.
+  }
+  get(key) {
+    return this._keys.indexOf(key);
+  }
+  get n() {
+    return this._keys.length;
+  }
+  set keys(array) {
+    if (this._locked) throw new Error("It is locked.");
+    if (Array.isArray(array)) {
+      this._keys = array;
+    } else {
+      throw Error("Not an Array");
+    }
+  }
+  get keys() {
+    return this._keys;
+  }
+  set locked(bool) {
+    if (typeof bool === "boolean") this._locked = bool;
+  }
+  get locked() {
+    return this._locked;
+  }
 }
 
 // --------------------
@@ -29,11 +60,47 @@ class SystemObject {
   }
 }
 
+class WObject {
+  constructor() {}
+}
+
+// --------------------
+
+class Img {
+  constructor(imgSrcArray) {
+    this.list = [];
+    this.init(imgSrcArray);
+  }
+  init(imgSrcArray) {
+    if (Array.isArray(imgSrcArray)) {
+      for (const imgSrc of imgSrcArray) {
+        if (typeof imgSrc !== "string") continue;
+        let img = new Image();
+        img.src = imgSrc;
+        this.list.push(img);
+      }
+    }
+  }
+}
+// Source
+
+const img = new Img([
+  "https://weraveyou.com/wp-content/uploads/2021/03/elon-musk.jpeg",
+]);
+
+class Character extends WObject {
+  constructor() {
+    super();
+  }
+}
+
+// --------------------
+
 class Layer extends SystemObject {
   constructor(parentSelector = null, contextType = "2d") {
     super(parentSelector);
     this._canvas = document.createElement("canvas");
-    this.append(this._parent);
+    this.appended(this._parent);
     this.fitInParent();
 
     this._running = false;
@@ -42,16 +109,17 @@ class Layer extends SystemObject {
       this._offscreen = this._canvas.transferControlToOffscreen();
       this._worker = new Worker(OFFSCREEN_PATH);
       this._worker.onmessage = function (e) {};
+      console.log(img.list);
       this.sendMessageToWorker(
         "init",
-        [this._offscreen, this._contextType],
+        [this._offscreen, this._contextType, img.list],
         [this._offscreen]
       );
     } else {
       this._ctx = this._canvas.getContext(this._contextType);
     }
   }
-  append(parentElement) {
+  appended(parentElement) {
     if (!parentElement instanceof HTMLElement)
       throw new Error("Not a HTMLElement.");
     parentElement.appendChild(this._canvas);
@@ -102,7 +170,13 @@ class Layer extends SystemObject {
       // Use Worker.
       if (bool) {
         // Run.
-        this.sendMessageToWorker("draw", [100, 200]);
+        this.sendMessageToWorker("draw", [
+          0,
+          Math.random() * 100, // X
+          Math.random() * 100, // Y
+          200, // Width
+          200, // Height
+        ]);
       } else {
         // Stop.
         this.sendMessageToWorker("stop", []);
@@ -154,7 +228,7 @@ class LayerManager extends SystemObject {
     this.createLayers(n);
   }
   createLayers(n) {
-    if (checkNumber(n, 1, this.MAX_LAYER_NUMBER) === false)
+    if (checkMinMax(n, 1, this.MAX_LAYER_NUMBER) === false)
       throw new Error("Out of Number");
     //-------
     for (let count = 0; count < n; count++)
@@ -179,6 +253,7 @@ class LayerManager extends SystemObject {
       cancelAnimationFrame(this.rAf_id);
     }
   }
+  import(wObject, layerIndex) {}
   get contextType() {
     return this._contextType;
   }
@@ -191,7 +266,7 @@ class World extends SystemObject {
   // *** canvasSelector must be 'Canvas Object' in HTML. ***
   constructor(parentSelector, nLayers = 1, contextType = "2d") {
     super(parentSelector);
-    this._layers = new LayerManager(nLayers, parentSelector, contextType);
+    this._layer = new LayerManager(nLayers, parentSelector, contextType);
     this._isWorking = false;
     this.init();
   }
@@ -200,26 +275,33 @@ class World extends SystemObject {
     this._isWorking = true;
   }
   addEventListeners() {
-    window.addEventListener("resize", () => this._layers.resize());
+    window.addEventListener("resize", () => this._layer.resize());
   }
   run() {
     if (this._isWorking === false) return;
-    this._layers.startRendering();
+    this._layer.startRendering();
   }
+  import(wObject, layerIndex) {}
   set parent(parentElement) {
     if (!parentElement instanceof HTMLElement)
       throw new Error("Not a HTMLElement");
     this._parent = parentElement;
-    this._layers.fitInParent();
+    this._layer.fitInParent();
   }
   get isWorking() {
     return this._isWorking;
   }
-  get layers() {
-    return this._layers;
+  get layer() {
+    return this._layer;
   }
 }
 
-let stage = new World(".stage");
+const eLAYERS = new ENUM(["MAIN", "UI"]);
+
+const stage = new World(".stage", eLAYERS.n);
+
+const diaboli = new Character();
+
+stage.import(diaboli, eLAYERS.get("MAIN"));
 
 stage.run();
